@@ -1,0 +1,16 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // By default, deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Allow read/write access to the 'children' collection for authenticated users.
+    // To make this work, you must implement Firebase Authentication in your app.
+    match /children/{childId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
