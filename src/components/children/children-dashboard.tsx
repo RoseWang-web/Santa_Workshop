@@ -233,7 +233,18 @@ export function ChildrenDashboard() {
                     <TableCell>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Badge variant={child.behaviorCategory === 'Nice' ? 'default' : child.behaviorCategory === 'Naughty' ? 'destructive' : 'secondary'} className="flex items-center gap-1.5 cursor-default bg-opacity-20 border-opacity-40">
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "flex items-center gap-1.5 cursor-default",
+                                    child.behaviorCategory === 'Nice' &&
+                                      "text-green-700 bg-green-50 border-green-300 dark:text-green-300 dark:bg-green-900/20 dark:border-green-700",
+                                    child.behaviorCategory === 'Almost Nice' &&
+                                      "text-amber-700 bg-amber-50 border-amber-300 dark:text-amber-300 dark:bg-amber-900/20 dark:border-amber-700",
+                                    child.behaviorCategory === 'Naughty' &&
+                                      "text-red-700 bg-red-50 border-red-300 dark:text-red-300 dark:bg-red-900/20 dark:border-red-700"
+                                  )}
+                                >
                                     <BehaviorIcon category={child.behaviorCategory} />
                                     <span className="hidden sm:inline">{child.behaviorCategory}</span>
                                 </Badge>
