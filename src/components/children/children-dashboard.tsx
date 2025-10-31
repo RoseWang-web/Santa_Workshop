@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { addDoc, collection, onSnapshot, query, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore';
 import { format, addDays } from 'date-fns';
 import { CalendarIcon, Frown, Gift, Loader2, Meh, PlusCircle, Smile, Sparkles, ToyBrick, Users } from 'lucide-react';
 import { useEffect, useState, useTransition, useActionState, useMemo } from 'react';
@@ -10,7 +10,7 @@ import { useFormStatus } from 'react-dom';
 import { z } from 'zod';
 
 
-import { addChild, deleteChild, getGiftSuggestions, seedData, updateChild } from '@/app/actions';
+import { addChild, deleteChild, getGiftSuggestions, restoreChild, seedData, updateChild } from '@/app/actions';
 import { AGE_RANGES, BEHAVIOR_CATEGORIES, type AgeRange, type BehaviorCategory, type Child, type ChildDocument, ChildFormSchema } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -66,7 +66,7 @@ export function ChildrenDashboard() {
 
 
   useEffect(() => {
-    const q = query(collection(db, 'children'));
+    const q = query(collection(db, 'children'), orderBy('name'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const childrenData: Child[] = [];
       querySnapshot.forEach((doc) => {
@@ -81,7 +81,6 @@ export function ChildrenDashboard() {
           deliveryTime: (data.deliveryTime as Timestamp).toDate(),
         });
       });
-      childrenData.sort((a,b) => a.name.localeCompare(b.name));
       setChildren(childrenData);
       setIsLoading(false);
     }, (error) => {
@@ -133,7 +132,7 @@ export function ChildrenDashboard() {
         action: (
           <ToastAction altText="Undo" onClick={async () => {
              if (tempDeleted) {
-                await addDoc(collection(db, 'children'), tempDeleted.doc);
+                await restoreChild(tempDeleted.doc);
                 toast({ title: 'Undo Successful', description: `${child.name}'s record has been restored.`});
                 setLastDeleted(null);
              }

@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, Timestamp, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, limit, query, serverTimestamp, setDoc, Timestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { type ChildDocument, ChildFormSchema } from '@/lib/types';
 import { suggestAppropriateGifts, type SuggestAppropriateGiftsInput } from '@/ai/flows/suggest-appropriate-gifts';
@@ -50,7 +50,6 @@ async function saveChild(childId: string | null, prevState: FormState, formData:
 export const addChild = saveChild.bind(null, null);
 export const updateChild = saveChild.bind(null);
 
-
 export async function deleteChild(childId: string): Promise<{ success: boolean; message: string }> {
   try {
     await deleteDoc(doc(db, 'children', childId));
@@ -63,7 +62,7 @@ export async function deleteChild(childId: string): Promise<{ success: boolean; 
 
 export async function restoreChild(child: ChildDocument): Promise<{ success: boolean; message: string }> {
   try {
-    await addDoc(collection(db, 'children'), child);
+    await addDoc(collection(db, 'children'), { ...child, lastUpdated: serverTimestamp() });
     revalidatePath('/');
     return { success: true, message: 'Child restored.' };
   } catch (e) {
@@ -81,10 +80,10 @@ export async function getGiftSuggestions(input: SuggestAppropriateGiftsInput) {
 }
 
 export async function seedData() {
-    const querySnapshot = await getDocs(collection(db, "children"));
-    if (querySnapshot.size > 0) {
-        return { success: false, message: "Database is not empty. Seeding aborted." };
-    }
+  const seedCheck = await getDocs(query(collection(db, 'children'), limit(1)));
+  if (seedCheck.size > 0) {
+    return { success: false, message: "Database is not empty. Seeding aborted." };
+  }
 
   const seedChildren = [
     { name: 'Leo Claus', address: '123 North Pole Lane, Arctic Circle', gift: 'Toy Train Set', behaviorCategory: 'Nice', ageRange: '5-7', deliveryTime: new Date('2024-12-25T02:00:00Z') },
