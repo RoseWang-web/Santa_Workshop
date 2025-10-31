@@ -250,7 +250,7 @@ export function ChildrenDashboard() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="ghost" className="relative" onClick={() => { setNotifOpen(true); setUnreadCount(0); }} aria-label="Notifications">
-                      <Mail className={cn("h-4 w-4", unreadCount > 0 && "animate-pulse text-red-600")} />
+                      <Mail className={cn("h-4 w-4", unreadCount > 0 && "santa-wiggle text-red-600")} />
                       {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-600" />
                       )}

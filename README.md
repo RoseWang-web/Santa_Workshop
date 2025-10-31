@@ -54,3 +54,13 @@ To deploy these rules:
 ```bash
 firebase deploy --only firestore:rules
 ```
+
+## Useful Websites to Learn More
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Firebase Documentation](https://firebase.google.com/docs)
+
+## Future Work
+
+- Styling this app so it has more Christmas feel
+- Meking the notification comes with an little animation

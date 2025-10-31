@@ -126,4 +126,17 @@
     backdrop-filter: blur(6px);
     border: 1px solid hsl(var(--border));
   }
+  @keyframes santa-wiggle {
+    0% { transform: translateY(0) rotate(0deg); }
+    15% { transform: translateY(-1px) rotate(-8deg); }
+    30% { transform: translateY(0) rotate(6deg); }
+    45% { transform: translateY(-1px) rotate(-6deg); }
+    60% { transform: translateY(0) rotate(4deg); }
+    75% { transform: translateY(-1px) rotate(-4deg); }
+    100% { transform: translateY(0) rotate(0deg); }
+  }
+  .santa-wiggle {
+    animation: santa-wiggle 1.2s ease-in-out infinite;
+    transform-origin: 50% 60%;
+  }
 }
