@@ -80,5 +80,50 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* subtle pixel grid background for cozy pixel vibe */
+    background-image:
+      linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 16px 16px, 16px 16px;
+    background-position: 0 0, 0 0;
+  }
+}
+
+/* Pixel-art helpers */
+@layer utilities {
+  .pixelated {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  .font-pixel-title {
+    font-family: 'Press Start 2P', cursive;
+    letter-spacing: 0.5px;
+  }
+  .font-pixel-ui {
+    font-family: 'VT323', monospace;
+    font-size: 1.05rem;
+  }
+  .candy-stripe {
+    background-image: repeating-linear-gradient(45deg,
+      rgba(220, 38, 38, 0.15) 0px,
+      rgba(220, 38, 38, 0.15) 10px,
+      rgba(255, 255, 255, 0.2) 10px,
+      rgba(255, 255, 255, 0.2) 20px
+    );
+  }
+  .xmas-bg {
+    /* two-tone red polka dots (dark red + pink), staggered grid */
+    background-image:
+      radial-gradient(circle, rgba(185, 28, 28, 0.55) 2px, transparent 2.5px),
+      radial-gradient(circle, rgba(244, 114, 182, 0.45) 2px, transparent 2.5px);
+    background-size: 24px 24px, 24px 24px;
+    background-position: 0 0, 12px 12px;
+    border-radius: 0.75rem;
+  }
+  .pixel-panel {
+    background-color: rgba(255,255,255,0.85);
+    box-shadow: 0 1px 0 0 rgba(0,0,0,0.2), 0 2px 0 0 rgba(0,0,0,0.15);
+    backdrop-filter: blur(6px);
+    border: 1px solid hsl(var(--border));
   }
 }

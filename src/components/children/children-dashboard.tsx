@@ -3,8 +3,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { collection, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore';
 import { format, addDays } from 'date-fns';
-import { CalendarIcon, Frown, Gift, Loader2, Meh, PlusCircle, Smile, Sparkles, ToyBrick, Users } from 'lucide-react';
-import { useEffect, useState, useTransition, useActionState, useMemo } from 'react';
+import { CalendarIcon, Frown, Gift, Loader2, Meh, PlusCircle, Smile, Sparkles, ToyBrick, Users, Mail } from 'lucide-react';
+import { useEffect, useState, useTransition, useActionState, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useFormStatus } from 'react-dom';
 import { z } from 'zod';
@@ -59,18 +59,25 @@ export function ChildrenDashboard() {
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [lastDeleted, setLastDeleted] = useState<{ id: string; doc: ChildDocument } | null>(null);
   const { toast } = useToast();
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   
   const [isSuggestionModalOpen, setSuggestionModalOpen] = useState(false);
   const [suggestionData, setSuggestionData] = useState<{gift: string, suggestions: string[]}>({gift: '', suggestions: []});
   const [isSuggestionLoading, setSuggestionLoading] = useState(false);
+  const [isNotifOpen, setNotifOpen] = useState(false);
+  const [recentChanges, setRecentChanges] = useState<Array<{ id: string; type: 'added'|'modified'|'removed'; name: string; desc: string; at: Date }>>([]);
+  const prevDocs = useRef<Map<string, any>>(new Map());
 
 
   useEffect(() => {
     const q = query(collection(db, 'children'), orderBy('name'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const childrenData: Child[] = [];
+      const nextMap = new Map<string, any>();
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        nextMap.set(doc.id, data);
         childrenData.push({
           id: doc.id,
           name: data.name,
@@ -83,6 +90,64 @@ export function ChildrenDashboard() {
       });
       setChildren(childrenData);
       setIsLoading(false);
+
+      // Real-time notifications, skip initial snapshot
+      if (isInitialLoad) {
+        setIsInitialLoad(false);
+        prevDocs.current = nextMap;
+        return;
+      }
+
+      const changes = querySnapshot.docChanges();
+      if (changes.length > 0) {
+        let adds = 0, mods = 0, dels = 0;
+        const detailed: Array<{ id: string; type: 'added'|'modified'|'removed'; name: string; desc: string; at: Date }> = [];
+        changes.forEach((c) => {
+          const cur = nextMap.get(c.doc.id) as any | undefined;
+          const prev = prevDocs.current.get(c.doc.id) as any | undefined;
+          if (c.type === 'added') {
+            adds++;
+            detailed.push({ id: c.doc.id, type: 'added', name: cur?.name ?? '(unknown)', desc: 'added to the list', at: new Date() });
+          } else if (c.type === 'removed') {
+            dels++;
+            detailed.push({ id: c.doc.id, type: 'removed', name: prev?.name ?? '(unknown)', desc: 'removed from the list', at: new Date() });
+          } else if (c.type === 'modified') {
+            mods++;
+            // compute field diffs
+            const changed: string[] = [];
+            if (prev && cur) {
+              if (prev.gift !== cur.gift) changed.push(`gift: ${prev.gift ?? '—'} → ${cur.gift ?? '—'}`);
+              if (prev.address !== cur.address) changed.push('address');
+              if (prev.behaviorCategory !== cur.behaviorCategory) changed.push('behavior');
+              if (prev.ageRange !== cur.ageRange) changed.push('age');
+              const prevTime = (prev.deliveryTime as Timestamp | undefined)?.toMillis?.() ?? null;
+              const curTime = (cur.deliveryTime as Timestamp | undefined)?.toMillis?.() ?? null;
+              if (prevTime !== curTime) changed.push('delivery time');
+            }
+            const desc = changed.length ? `updated: ${changed.join(', ')}` : 'updated';
+            detailed.push({ id: c.doc.id, type: 'modified', name: (cur?.name ?? prev?.name) ?? '(unknown)', desc, at: new Date() });
+          }
+        });
+
+        const parts: string[] = [];
+        if (adds) parts.push(`${adds} new ${adds === 1 ? 'letter' : 'letters'}`);
+        if (mods) parts.push(`${mods} update${mods === 1 ? '' : 's'}`);
+        if (dels) parts.push(`${dels} deletion${dels === 1 ? '' : 's'}`);
+
+        if (parts.length) {
+          setUnreadCount((n) => n + changes.length);
+          setRecentChanges((prev) => {
+            const next = [...detailed, ...prev].slice(0, 20);
+            return next;
+          });
+          toast({
+            title: 'Workshop update',
+            description: parts.join(', '),
+          });
+        }
+      }
+      // update previous map after processing
+      prevDocs.current = nextMap;
     }, (error) => {
       console.error("Error fetching children: ", error);
       setIsLoading(false);
@@ -94,7 +159,7 @@ export function ChildrenDashboard() {
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [toast, isInitialLoad]);
 
   const handleSeedData = async () => {
     startSeedingTransition(async () => {
@@ -174,14 +239,27 @@ export function ChildrenDashboard() {
 
   return (
     <TooltipProvider>
-      <Card>
+      <Card className="pixel-panel">
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
              <div className="flex flex-col gap-1">
-                <CardTitle className="text-2xl font-bold tracking-tight">Children's List</CardTitle>
+                <CardTitle className="text-2xl font-bold tracking-tight font-pixel-title">Children's List</CardTitle>
                 <CardDescription>Manage the list of children for Santa's delivery.</CardDescription>
             </div>
             <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" className="relative" onClick={() => { setNotifOpen(true); setUnreadCount(0); }} aria-label="Notifications">
+                      <Mail className={cn("h-4 w-4", unreadCount > 0 && "animate-pulse text-red-600")} />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-600" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{unreadCount > 0 ? `${unreadCount} new update${unreadCount === 1 ? '' : 's'}` : 'No new updates'}</p>
+                  </TooltipContent>
+                </Tooltip>
                 {!isLoading && children.length === 0 && (
                      <Button variant="outline" onClick={handleSeedData} disabled={isSeeding}>
                         {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Users className="mr-2 h-4 w-4" />}
@@ -278,6 +356,32 @@ export function ChildrenDashboard() {
           )}
         </CardContent>
       </Card>
+      <Dialog open={isNotifOpen} onOpenChange={setNotifOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-pixel-title flex items-center gap-2"><Mail className="h-4 w-4"/> Workshop Updates</DialogTitle>
+            <DialogDescription>Latest changes to the Nice List</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-72 overflow-auto space-y-3 pr-1">
+            {recentChanges.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No recent updates.</p>
+            ) : (
+              recentChanges.map((c, idx) => (
+                <div key={`${c.id}-${idx}`} className={cn("rounded-md border p-2 text-sm", c.type === 'added' && 'bg-green-50/60 border-green-200', c.type === 'modified' && 'bg-amber-50/60 border-amber-200', c.type === 'removed' && 'bg-red-50/60 border-red-200')}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{c.name}</span>
+                    <span className="text-xs text-muted-foreground">{format(c.at, 'MMM d, h:mm a')}</span>
+                  </div>
+                  <div className="mt-1 text-foreground/80">{c.desc}</div>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setNotifOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {editingChild && (
          <ChildFormDialog 
             key={`edit-dialog-${editingChild.id}`}
